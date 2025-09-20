@@ -56,6 +56,10 @@ dependencies = [
   "torchaudio==2.8.*",
   "tqdm>=4.67.1",
   "transformers==4.52.1",
+  "fastapi>=0.111.0,<0.112.0",
+  "uvicorn[standard]>=0.30.0,<0.31.0",
+  "python-multipart>=0.0.9,<0.1.0",
+  "pydantic-settings>=2.6.0,<2.7.0",
 
   # Use "wetext" on Windows/Mac, otherwise "WeTextProcessing" on Linux.
   "wetext>=0.0.9; sys_platform != 'linux'",
