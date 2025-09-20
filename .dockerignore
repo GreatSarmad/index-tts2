@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.swp
+archive
+assets
+checkpoints
+examples/.ipynb_checkpoints
+build
+.dist
+site
+node_modules
+*.log
+.DS_Store

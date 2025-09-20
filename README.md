@@ -441,6 +441,84 @@ We sincerely thank colleagues from different roles at Bilibili, whose combined e
  - **Bin Xia** - Contributed to the review, optimization, and follow-up of technical solutions, focusing on ensuring model effectiveness.
 
 
+
+
+## 🚀 FastAPI & Docker Deployment
+
+### Quick Start Guide
+
+1. Clone this repository and make sure Docker Desktop is running with GPU support enabled.
+2. Pull or build the production image:
+   ```bash
+   docker compose up -d
+   ```
+   The bundled `docker-compose.yml` maps local folders for voices, generated audio, and cached models so data survives container restarts.
+3. Visit `http://localhost:8000/docs` to explore the OpenAPI documentation. The service exposes a `/health` probe that is also used for Docker health checks.
+
+### API Documentation
+
+The FastAPI server provides four GPU-aware endpoints:
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET` | `/health` | Returns GPU availability, loaded model metadata, and voice counts. |
+| `GET` | `/voices` | Lists every registered speaker prompt, including the default seed voice. |
+| `POST` | `/clone-voice` | Upload a WAV file and register it as a reusable `voice_id`. Accepts multipart form-data. |
+| `POST` | `/generate` | Generate speech from text. Accepts JSON or form-data with optional speed and pitch controls. |
+
+Example requests:
+
+```bash
+# Generate speech with the default voice
+curl -o output.wav   -X POST "http://localhost:8000/generate"   -H "Content-Type: application/json"   -d '{"text": "Hello from Index-TTS2!", "speed": 1.0, "pitch": 0.0}'
+
+# Clone a new voice from a prompt sample
+curl -X POST "http://localhost:8000/clone-voice"   -F "voice_name=Demo Voice"   -F "file=@examples/voice_01.wav"
+
+# Generate speech with a cloned voice
+curl -o custom.wav   -X POST "http://localhost:8000/generate"   -H "Content-Type: application/json"   -d '{"text": "Custom timbre in action.", "voice_id": "demo-voice"}'
+```
+
+### Voice Cloning Tutorial
+
+1. Prepare a clean reference WAV file (≤15 seconds recommended).
+2. Mount or copy it into the container's `/app/voices` volume.
+3. Call `/clone-voice` with `voice_name` and the file upload. The API stores metadata in `voices.json` for persistence.
+4. Use the returned `voice_id` with `/generate` to synthesise speech using the cloned timbre.
+
+### n8n Integration Examples
+
+Use the **HTTP Request** node configured with the following settings to trigger generation from a workflow:
+
+```json
+{
+  "parameters": {
+    "method": "POST",
+    "url": "http://index-tts2:8000/generate",
+    "responseFormat": "file",
+    "jsonParameters": true,
+    "options": {"timeout": 60000},
+    "bodyParametersJson": "{\n  \"text\": \"Hello automation!\",\n  \"voice_id\": \"default\",\n  \"speed\": 1.0,\n  \"pitch\": 0.0\n}"
+  }
+}
+```
+
+For voice cloning from n8n, switch the node to **Form-Data** mode with `voice_name` and the binary field pointing to your uploaded audio sample.
+
+### Troubleshooting Guide
+
+- **Model downloads are slow during build:** set `DOWNLOAD_MODELS=false` when building the image and mount pre-downloaded checkpoints via the `/app/models` volume.
+- **GPU not detected:** ensure Docker Desktop is configured with the NVIDIA runtime and that `NVIDIA_VISIBLE_DEVICES` is set appropriately (default is `all`).
+- **Missing voices after restart:** confirm that the `voices` volume is mounted; the API persists metadata in `/app/voices/voices.json`.
+- **Request payload errors:** the `/generate` endpoint validates speed (0.25–4.0×) and pitch (±12 semitones). Adjust values to stay within bounds.
+
+### Update Instructions
+
+1. Pull the latest repository changes and rebuild the Docker image with a versioned tag (e.g., `v2.0.0`).
+2. Push the image to your container registry using the `latest` and semantic version tags.
+3. Stop the running compose stack, back up the `voices`, `output`, and `models` directories if not already persisted, then redeploy with `docker compose pull && docker compose up -d` to ensure volumes are reused.
+4. Verify the `/health` endpoint before routing production traffic.
+
 ## 📚 Citation
 
 🌟 If you find our work helpful, please leave us a star and cite our paper.
